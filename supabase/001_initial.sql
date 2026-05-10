@@ -377,36 +377,97 @@ create index idx_itens_contrato on itens(contrato_id);
 -- ============================================================
 -- 7. EXECUÇÃO (4 etapas por item: fabricação → entrega → instalação → medição)
 -- ============================================================
+-- Cada item tem UMA linha de execução com QUANTIDADES PARCIAIS por etapa.
+-- O fluxo natural é: fabricado → entregue → instalado → medido pelo cliente.
+--
+-- Regras (forçadas pelo banco via CHECK constraints):
+--   ent_qtd <= fab_qtd  (não pode entregar mais do que fabricou)
+--   inst_qtd <= ent_qtd (não pode instalar mais do que entregou)
+--   med_qtd <= inst_qtd (não pode medir mais do que instalou)
+--   todas as qtd <= itens.quantidade (não pode exceder o total do item)
+--
+-- Status de cada etapa é GENERATED automaticamente:
+--   qtd = 0                  → 'pendente'
+--   0 < qtd < quantidade     → 'andamento'
+--   qtd = quantidade         → 'concluido'
+--
+-- Datas de cada etapa (preenchidas via TRIGGER quando a qtd muda):
+--   *_data_inicio        → quando a qtd saiu de 0 pela primeira vez
+--   *_data_atualizacao   → toda vez que a qtd é alterada
+--   *_data_fim           → quando a qtd alcançou a quantidade total
+-- ============================================================
 
 create table execucao (
   id uuid primary key default uuid_generate_v4(),
   empresa_id uuid not null references empresas(id) on delete cascade,
   item_id uuid not null,
 
-  -- Fabricação
-  fab_status text default 'pendente' check (fab_status in ('pendente', 'andamento', 'concluido')),
-  fab_data_inicio date,
-  fab_data_fim date,
+  -- Quantidade total do item (desnormalizada via trigger ao criar a linha)
+  -- Permite os checks de cascata (ent_qtd <= fab_qtd <= quantidade_total)
+  -- Sincronizada com itens.quantidade via trigger
+  quantidade_total numeric(10,3) not null check (quantidade_total >= 0),
+
+  -- ========== FABRICAÇÃO ==========
+  fab_qtd numeric(10,3) not null default 0
+    check (fab_qtd >= 0 and fab_qtd <= quantidade_total),
+  -- Status derivado da quantidade
+  fab_status text generated always as (
+    case
+      when fab_qtd = 0 then 'pendente'
+      when fab_qtd >= quantidade_total then 'concluido'
+      else 'andamento'
+    end
+  ) stored,
+  fab_data_inicio date,         -- preenchida via trigger (primeira vez fora de 0)
+  fab_data_atualizacao date,    -- preenchida via trigger (cada update da qtd)
+  fab_data_fim date,            -- preenchida via trigger (quando alcança total)
   fab_responsavel text,
   fab_observacao text,
 
-  -- Entrega (material/peça chegou na obra)
-  ent_status text default 'pendente' check (ent_status in ('pendente', 'andamento', 'concluido')),
+  -- ========== ENTREGA ==========
+  ent_qtd numeric(10,3) not null default 0
+    check (ent_qtd >= 0 and ent_qtd <= fab_qtd),
+  ent_status text generated always as (
+    case
+      when ent_qtd = 0 then 'pendente'
+      when ent_qtd >= quantidade_total then 'concluido'
+      else 'andamento'
+    end
+  ) stored,
   ent_data_inicio date,
+  ent_data_atualizacao date,
   ent_data_fim date,
   ent_responsavel text,
   ent_observacao text,
 
-  -- Instalação
-  inst_status text default 'pendente' check (inst_status in ('pendente', 'andamento', 'concluido')),
+  -- ========== INSTALAÇÃO ==========
+  inst_qtd numeric(10,3) not null default 0
+    check (inst_qtd >= 0 and inst_qtd <= ent_qtd),
+  inst_status text generated always as (
+    case
+      when inst_qtd = 0 then 'pendente'
+      when inst_qtd >= quantidade_total then 'concluido'
+      else 'andamento'
+    end
+  ) stored,
   inst_data_inicio date,
+  inst_data_atualizacao date,
   inst_data_fim date,
   inst_responsavel text,
   inst_observacao text,
 
-  -- Medição (validação final com o cliente)
-  med_status text default 'pendente' check (med_status in ('pendente', 'andamento', 'concluido')),
+  -- ========== MEDIÇÃO (validação final com o cliente) ==========
+  med_qtd numeric(10,3) not null default 0
+    check (med_qtd >= 0 and med_qtd <= inst_qtd),
+  med_status text generated always as (
+    case
+      when med_qtd = 0 then 'pendente'
+      when med_qtd >= quantidade_total then 'concluido'
+      else 'andamento'
+    end
+  ) stored,
   med_data_inicio date,
+  med_data_atualizacao date,
   med_data_fim date,
   med_responsavel text,
   med_observacao text,
@@ -427,6 +488,8 @@ create table execucao (
 
 create index idx_execucao_empresa on execucao(empresa_id);
 create index idx_execucao_item on execucao(item_id);
+create index idx_execucao_fab_status on execucao(fab_status);
+create index idx_execucao_med_status on execucao(med_status);
 
 -- ============================================================
 -- 8. NOTAS FISCAIS (emitidas pela obra)
@@ -824,7 +887,136 @@ create trigger trg_fd_updated before update on fd
 -- antes de rodar. Você vai precisar do ID dessa empresa no próximo passo.
 
 insert into empresas (nome, cnpj) values
-  ('P O N INDUSTRIA E SERVIÇOS LTDA', '59.902.022/0001-90');
+  ('SUA EMPRESA AQUI LTDA', '00.000.000/0001-00');
+
+-- ============================================================
+-- 14a. TRIGGERS: execução (sincronização de qtd_total e datas)
+-- ============================================================
+-- (a) Sincronizar quantidade_total da execução com itens.quantidade
+--     - Ao INSERT em execução, copia itens.quantidade pra quantidade_total
+--     - Ao UPDATE em itens.quantidade, atualiza execucao.quantidade_total
+--
+-- (b) Preencher datas automáticas quando qtd de uma etapa muda:
+--     - data_inicio: primeira vez que a qtd sai de 0
+--     - data_atualizacao: toda vez que a qtd muda
+--     - data_fim: quando a qtd alcança quantidade_total
+--
+-- O usuário só atualiza fab_qtd, ent_qtd, inst_qtd, med_qtd.
+-- O banco cuida do resto (datas + status).
+-- ============================================================
+
+-- (a1) Trigger antes do INSERT em execucao: copia qtd do item
+create or replace function execucao_set_quantidade_total()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  select quantidade into new.quantidade_total
+  from itens where id = new.item_id;
+
+  if new.quantidade_total is null then
+    new.quantidade_total := 0;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger trg_execucao_set_qtd_total
+  before insert on execucao
+  for each row execute function execucao_set_quantidade_total();
+
+-- (a2) Trigger ao mudar itens.quantidade: sincroniza execucao.quantidade_total
+create or replace function itens_sincroniza_execucao_qtd()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if (new.quantidade is distinct from old.quantidade) then
+    update execucao
+    set quantidade_total = coalesce(new.quantidade, 0)
+    where item_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_item_sincroniza_execucao
+  after update of quantidade on itens
+  for each row execute function itens_sincroniza_execucao_qtd();
+
+-- (b) Trigger BEFORE UPDATE em execucao: preenche datas de cada etapa
+-- Usa BEFORE pra setar os campos no NEW antes de gravar (sem gerar update extra)
+create or replace function execucao_preenche_datas()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  -- FABRICAÇÃO
+  if (new.fab_qtd is distinct from old.fab_qtd) then
+    new.fab_data_atualizacao := current_date;
+    if old.fab_qtd = 0 and new.fab_qtd > 0 then
+      new.fab_data_inicio := coalesce(old.fab_data_inicio, current_date);
+    end if;
+    if new.fab_qtd >= new.quantidade_total and new.quantidade_total > 0 then
+      new.fab_data_fim := coalesce(old.fab_data_fim, current_date);
+    elsif new.fab_qtd < new.quantidade_total then
+      new.fab_data_fim := null;  -- voltou pra andamento
+    end if;
+  end if;
+
+  -- ENTREGA
+  if (new.ent_qtd is distinct from old.ent_qtd) then
+    new.ent_data_atualizacao := current_date;
+    if old.ent_qtd = 0 and new.ent_qtd > 0 then
+      new.ent_data_inicio := coalesce(old.ent_data_inicio, current_date);
+    end if;
+    if new.ent_qtd >= new.quantidade_total and new.quantidade_total > 0 then
+      new.ent_data_fim := coalesce(old.ent_data_fim, current_date);
+    elsif new.ent_qtd < new.quantidade_total then
+      new.ent_data_fim := null;
+    end if;
+  end if;
+
+  -- INSTALAÇÃO
+  if (new.inst_qtd is distinct from old.inst_qtd) then
+    new.inst_data_atualizacao := current_date;
+    if old.inst_qtd = 0 and new.inst_qtd > 0 then
+      new.inst_data_inicio := coalesce(old.inst_data_inicio, current_date);
+    end if;
+    if new.inst_qtd >= new.quantidade_total and new.quantidade_total > 0 then
+      new.inst_data_fim := coalesce(old.inst_data_fim, current_date);
+    elsif new.inst_qtd < new.quantidade_total then
+      new.inst_data_fim := null;
+    end if;
+  end if;
+
+  -- MEDIÇÃO
+  if (new.med_qtd is distinct from old.med_qtd) then
+    new.med_data_atualizacao := current_date;
+    if old.med_qtd = 0 and new.med_qtd > 0 then
+      new.med_data_inicio := coalesce(old.med_data_inicio, current_date);
+    end if;
+    if new.med_qtd >= new.quantidade_total and new.quantidade_total > 0 then
+      new.med_data_fim := coalesce(old.med_data_fim, current_date);
+    elsif new.med_qtd < new.quantidade_total then
+      new.med_data_fim := null;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger trg_execucao_preenche_datas
+  before update of fab_qtd, ent_qtd, inst_qtd, med_qtd, quantidade_total on execucao
+  for each row execute function execucao_preenche_datas();
 
 -- ============================================================
 -- 15. TRIGGERS: cascata de status — pagamentos → parcelas → acordos
@@ -1436,11 +1628,21 @@ select
   coalesce(e.inst_status, 'pendente') as status_instalacao,
   coalesce(e.med_status, 'pendente') as status_medicao,
 
-  -- Datas relevantes
-  e.fab_data_fim as data_fabricacao,
-  e.ent_data_fim as data_entrega,
-  e.inst_data_fim as data_instalacao,
-  e.med_data_fim as data_medicao,
+  -- Quantidades parciais por etapa (NOVO)
+  coalesce(e.fab_qtd, 0) as qtd_fabricada,
+  coalesce(e.ent_qtd, 0) as qtd_entregue,
+  coalesce(e.inst_qtd, 0) as qtd_instalada,
+  coalesce(e.med_qtd, 0) as qtd_medida,
+
+  -- Datas: data da última atualização e data de conclusão da etapa
+  e.fab_data_atualizacao as data_ultima_fabricacao,
+  e.fab_data_fim as data_fabricacao_concluida,
+  e.ent_data_atualizacao as data_ultima_entrega,
+  e.ent_data_fim as data_entrega_concluida,
+  e.inst_data_atualizacao as data_ultima_instalacao,
+  e.inst_data_fim as data_instalacao_concluida,
+  e.med_data_atualizacao as data_ultima_medicao,
+  e.med_data_fim as data_medicao_concluida,
 
   -- Responsáveis
   e.fab_responsavel as responsavel_fabricacao,
@@ -1470,13 +1672,26 @@ select
     else 'fabricacao'
   end as etapa_atual,
 
-  -- Progresso percentual (0, 25, 50, 75, 100)
+  -- Progresso percentual REAL baseado em quantidade (granular, 0-100%)
+  -- Cada etapa vale 25% e contribui proporcionalmente: (qtd_etapa / total) × 25
+  -- Ex: item 100un, fab=100, ent=80, inst=50, med=0 → 25 + 20 + 12.5 + 0 = 57.5%
+  case
+    when coalesce(e.quantidade_total, 0) = 0 then 0
+    else round((
+      coalesce(e.fab_qtd, 0) / e.quantidade_total * 25 +
+      coalesce(e.ent_qtd, 0) / e.quantidade_total * 25 +
+      coalesce(e.inst_qtd, 0) / e.quantidade_total * 25 +
+      coalesce(e.med_qtd, 0) / e.quantidade_total * 25
+    )::numeric, 2)
+  end as progresso_pct,
+
+  -- Progresso "etapas" (0, 25, 50, 75, 100) — útil pra dashboards simples
   (
     case when e.fab_status = 'concluido' then 25 else 0 end +
     case when e.ent_status = 'concluido' then 25 else 0 end +
     case when e.inst_status = 'concluido' then 25 else 0 end +
     case when e.med_status = 'concluido' then 25 else 0 end
-  ) as progresso_pct,
+  ) as progresso_etapas_pct,
 
   -- Contador de evidências
   jsonb_array_length(coalesce(e.evidencias, '[]'::jsonb)) as evidencias_count

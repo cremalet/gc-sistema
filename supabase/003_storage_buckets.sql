@@ -72,6 +72,40 @@ as $$
 $$;
 
 -- ============================================================
+-- Drop policies existentes (pra rodar idempotente em dev)
+-- ============================================================
+do $$
+declare
+  pol record;
+begin
+  for pol in
+    select policyname
+    from pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and policyname in (
+        'Anexos: ver só da própria empresa',
+        'Anexos: upload na própria empresa',
+        'Anexos: atualizar próprios',
+        'Anexos: admin/dono exclui',
+        'Evidências: ver só da própria empresa',
+        'Evidências: upload produção/medição/financeiro',
+        'Evidências: atualizar próprias',
+        'Evidências: admin/dono exclui',
+        'NFs: ver só da própria empresa',
+        'NFs: financeiro faz upload',
+        'NFs: financeiro atualiza',
+        'NFs: admin exclui',
+        'Documentos: ver só da própria empresa',
+        'Documentos: comercial/admin fazem upload',
+        'Documentos: comercial atualiza',
+        'Documentos: admin exclui'
+      )
+  loop
+    execute format('drop policy if exists %I on storage.objects', pol.policyname);
+  end loop;
+end $$;
+
+-- ============================================================
 -- Bucket: anexos
 -- ============================================================
 create policy "Anexos: ver só da própria empresa" on storage.objects

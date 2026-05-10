@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { Toaster } from 'sonner'
 
 import Header from '@/components/Header'
 import Sidebar from '@/components/Sidebar'
@@ -49,6 +50,7 @@ export default async function AppLayout({
         />
         <main className="flex-1 p-8">{children}</main>
       </div>
+      <Toaster position="top-right" richColors closeButton />
     </div>
   )
 }

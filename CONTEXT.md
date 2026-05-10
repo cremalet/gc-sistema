@@ -36,6 +36,9 @@ Credenciais em `.env.local` (nunca commitar). Template em `.env.local.example`.
 - `obras` — cadastro central
 - `itens` — vinculados a contrato OU proposta (XOR), ou soltos
 - `execucao` — 4 etapas (fabricação → entrega → instalação → medição); 1 por item
+  - Cada etapa tem **quantidade parcial** (`fab_qtd`, `ent_qtd`, `inst_qtd`, `med_qtd`) com cascata forçada (`med ≤ inst ≤ ent ≤ fab ≤ quantidade_total`)
+  - Status (`fab_status`, etc) é GENERATED automaticamente pela quantidade
+  - Datas (`*_data_inicio`, `*_data_atualizacao`, `*_data_fim`) preenchidas via trigger automaticamente
 
 **Financeiro (5):**
 - `notas_fiscais` — NFs emitidas

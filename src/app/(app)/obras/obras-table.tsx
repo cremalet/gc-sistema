@@ -4,7 +4,7 @@ import DataTable from '@/components/DataTable'
 import ProgressBar from '@/components/ProgressBar'
 import StatusBadge from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/format'
-import type { ObraListItem } from '@/lib/supabase/types'
+import type { ObraListItem } from '@/lib/types'
 
 function computeProgress(obra: ObraListItem): number | null {
   if (obra.status === 'concluida') return 100

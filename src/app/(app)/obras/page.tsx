@@ -1,9 +1,11 @@
 import { Building2, Plus } from 'lucide-react'
 import Link from 'next/link'
 
+import EmptyState from '@/components/EmptyState'
+import Pagination from '@/components/Pagination'
 import { getCurrentProfile } from '@/lib/supabase/profile'
 import { createClient } from '@/lib/supabase/server'
-import type { ObraListItem, ObraStatus } from '@/lib/supabase/types'
+import type { ObraListItem, ObraStatus } from '@/lib/types'
 
 import ObrasFilters from './filters'
 import ObrasTable from './obras-table'
@@ -73,7 +75,9 @@ export default async function ObrasPage({
     )
   }
 
-  const obras: ObraListItem[] = data ?? []
+  // Cast: narrowing de campos NOT NULL da tabela obras que a view marca como
+  // nullable (id, empresa_id, codigo_obra, nome, status) — ver lib/types.ts.
+  const obras = (data ?? []) as unknown as ObraListItem[]
   const total = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -98,7 +102,11 @@ export default async function ObrasPage({
       </div>
 
       {isEmpty && !hasFilters ? (
-        <EmptyState canCreate={canCreate} />
+        <EmptyState
+          icon={Building2}
+          title="Nenhuma obra cadastrada ainda"
+          action={canCreate ? { label: 'Nova obra', href: '/obras/nova' } : null}
+        />
       ) : isEmpty ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-sm text-gray-500">
           Nenhuma obra encontrada com esses filtros.
@@ -110,95 +118,12 @@ export default async function ObrasPage({
             page={page}
             totalPages={totalPages}
             total={total}
-            searchParams={searchParams}
+            basePath="/obras"
+            entityLabel={['obra', 'obras']}
+            extraParams={{ q, status: statusFilter }}
           />
         </>
       )}
-    </div>
-  )
-}
-
-function EmptyState({ canCreate }: { canCreate: boolean }) {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-      <div className="mx-auto w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-        <Building2 size={28} className="text-gray-400" />
-      </div>
-      <p className="text-gray-700 mb-4">Nenhuma obra cadastrada ainda</p>
-      {canCreate && (
-        <Link
-          href="/obras/nova"
-          className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors"
-        >
-          <Plus size={16} />
-          Nova obra
-        </Link>
-      )}
-    </div>
-  )
-}
-
-function Pagination({
-  page,
-  totalPages,
-  total,
-  searchParams,
-}: {
-  page: number
-  totalPages: number
-  total: number
-  searchParams: SearchParams
-}) {
-  if (totalPages <= 1) {
-    return (
-      <p className="text-sm text-gray-500">
-        {total} {total === 1 ? 'obra' : 'obras'}
-      </p>
-    )
-  }
-
-  function buildUrl(targetPage: number): string {
-    const params = new URLSearchParams()
-    if (searchParams.q) params.set('q', searchParams.q)
-    if (searchParams.status) params.set('status', searchParams.status)
-    params.set('page', String(targetPage))
-    return `/obras?${params.toString()}`
-  }
-
-  const prevDisabled = page <= 1
-  const nextDisabled = page >= totalPages
-
-  return (
-    <div className="flex items-center justify-between gap-4 text-sm text-gray-600 flex-wrap">
-      <span>
-        {total} {total === 1 ? 'obra' : 'obras'} · página {page} de {totalPages}
-      </span>
-      <div className="flex items-center gap-2">
-        <Link
-          href={prevDisabled ? '#' : buildUrl(page - 1)}
-          aria-disabled={prevDisabled}
-          tabIndex={prevDisabled ? -1 : undefined}
-          className={`px-3 py-1.5 rounded-md border text-sm ${
-            prevDisabled
-              ? 'border-gray-200 text-gray-400 pointer-events-none'
-              : 'border-gray-300 text-gray-700 hover:bg-gray-50 bg-white'
-          }`}
-        >
-          Anterior
-        </Link>
-        <Link
-          href={nextDisabled ? '#' : buildUrl(page + 1)}
-          aria-disabled={nextDisabled}
-          tabIndex={nextDisabled ? -1 : undefined}
-          className={`px-3 py-1.5 rounded-md border text-sm ${
-            nextDisabled
-              ? 'border-gray-200 text-gray-400 pointer-events-none'
-              : 'border-gray-300 text-gray-700 hover:bg-gray-50 bg-white'
-          }`}
-        >
-          Próxima
-        </Link>
-      </div>
     </div>
   )
 }

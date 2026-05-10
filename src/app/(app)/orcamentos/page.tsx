@@ -1,5 +1,164 @@
-import EmConstrucao from '@/components/EmConstrucao'
+import { FileText, Plus } from 'lucide-react'
+import Link from 'next/link'
 
-export default function OrcamentosPage() {
-  return <EmConstrucao pagina="Orçamentos" />
+import EmptyState from '@/components/EmptyState'
+import Pagination from '@/components/Pagination'
+import { getCurrentProfile } from '@/lib/supabase/profile'
+import { createClient } from '@/lib/supabase/server'
+import type { OrcamentoListItem, OrcamentoStatus } from '@/lib/types'
+
+import OrcamentosFilters from './filters'
+import OrcamentosTable from './orcamentos-table'
+
+const PAGE_SIZE = 20
+
+const VALID_STATUS: readonly OrcamentoStatus[] = [
+  'pendente',
+  'analise',
+  'enviado',
+  'aprovado',
+  'rejeitado',
+  'expirado',
+]
+
+function isValidStatus(v: string): v is OrcamentoStatus {
+  return (VALID_STATUS as readonly string[]).includes(v)
+}
+
+// Retorna uma string YYYY-MM-DD (cutoff) ou null se o filtro for "todos".
+function computePeriodoCutoff(periodo: string): string | null {
+  if (periodo === '30d') {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().slice(0, 10)
+  }
+  if (periodo === '90d') {
+    const d = new Date()
+    d.setDate(d.getDate() - 90)
+    return d.toISOString().slice(0, 10)
+  }
+  if (periodo === 'ano') {
+    return `${new Date().getFullYear()}-01-01`
+  }
+  return null
+}
+
+type SearchParams = {
+  busca?: string
+  status?: string
+  periodo?: string
+  page?: string
+}
+
+export default async function OrcamentosPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const profile = await getCurrentProfile()
+  const canCreate =
+    profile?.perfil === 'admin' || profile?.perfil === 'comercial'
+
+  const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1)
+  const busca = searchParams.busca?.trim() ?? ''
+  const statusFilter = searchParams.status ?? ''
+  const periodoFilter = searchParams.periodo ?? ''
+
+  const supabase = createClient()
+
+  let query = supabase
+    .from('orcamentos')
+    .select(
+      'id, numero, data_solicitacao, cliente_nome, cliente_cidade, status, valor_estimado, responsavel',
+      { count: 'exact' },
+    )
+    .order('data_solicitacao', { ascending: false })
+
+  if (busca) {
+    query = query.or(
+      `numero.ilike.%${busca}%,cliente_nome.ilike.%${busca}%,cliente_contato.ilike.%${busca}%,cliente_email.ilike.%${busca}%`,
+    )
+  }
+
+  if (statusFilter && isValidStatus(statusFilter)) {
+    query = query.eq('status', statusFilter)
+  }
+
+  const cutoff = computePeriodoCutoff(periodoFilter)
+  if (cutoff) {
+    query = query.gte('data_solicitacao', cutoff)
+  }
+
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
+  const { data, count, error } = await query.range(from, to)
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-700">
+        Erro ao carregar orçamentos: {error.message}
+      </div>
+    )
+  }
+
+  // Cast: status vem como `string` do gen, mas o banco garante OrcamentoStatus.
+  const orcamentos = (data ?? []) as unknown as OrcamentoListItem[]
+  const total = count ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const hasFilters =
+    busca !== '' || statusFilter !== '' || periodoFilter !== ''
+  const isEmpty = orcamentos.length === 0
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex-1 min-w-[280px]">
+          <OrcamentosFilters />
+        </div>
+        {canCreate && (
+          <Link
+            href="/orcamentos/novo"
+            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+          >
+            <Plus size={16} />
+            Novo orçamento
+          </Link>
+        )}
+      </div>
+
+      {isEmpty && !hasFilters ? (
+        <EmptyState
+          icon={FileText}
+          title="Nenhum orçamento cadastrado ainda"
+          action={
+            canCreate
+              ? { label: 'Novo orçamento', href: '/orcamentos/novo' }
+              : null
+          }
+        />
+      ) : isEmpty ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-sm text-gray-500">
+          Nenhum orçamento encontrado com esses filtros.
+        </div>
+      ) : (
+        <>
+          <OrcamentosTable orcamentos={orcamentos} />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            basePath="/orcamentos"
+            entityLabel={['orçamento', 'orçamentos']}
+            extraParams={{
+              busca,
+              status: statusFilter,
+              periodo: periodoFilter,
+            }}
+          />
+        </>
+      )}
+    </div>
+  )
 }
