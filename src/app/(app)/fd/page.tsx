@@ -2,6 +2,7 @@ import { HandCoins, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 import EmptyState from '@/components/EmptyState'
+import ExportButton from '@/components/ExportButton'
 import Pagination from '@/components/Pagination'
 import { getCurrentProfile } from '@/lib/supabase/profile'
 import { createClient } from '@/lib/supabase/server'
@@ -128,15 +129,27 @@ export default async function FdPage({
         <div className="flex-1 min-w-[280px]">
           <FdFilters obraOptions={obraOptions} />
         </div>
-        {canCreate && (
-          <Link
-            href="/fd/novo"
-            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
-          >
-            <Plus size={16} />
-            Novo lançamento
-          </Link>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <ExportButton
+            endpoint="/api/export/fd"
+            searchParams={{
+              busca,
+              obra: obraFilter,
+              status: statusFilter,
+              periodo: periodoFilter,
+            }}
+            filename={`fd-${new Date().toISOString().slice(0, 10)}`}
+          />
+          {canCreate && (
+            <Link
+              href="/fd/novo"
+              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+            >
+              <Plus size={16} />
+              Novo lançamento
+            </Link>
+          )}
+        </div>
       </div>
 
       {isEmpty && !hasFilters ? (

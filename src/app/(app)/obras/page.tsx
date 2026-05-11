@@ -2,6 +2,7 @@ import { Building2, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 import EmptyState from '@/components/EmptyState'
+import ExportButton from '@/components/ExportButton'
 import Pagination from '@/components/Pagination'
 import { getCurrentProfile } from '@/lib/supabase/profile'
 import { createClient } from '@/lib/supabase/server'
@@ -103,15 +104,22 @@ export default async function ObrasPage({
         <div className="flex-1 min-w-[280px]">
           <ObrasFilters />
         </div>
-        {canCreate && (
-          <Link
-            href="/obras/nova"
-            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
-          >
-            <Plus size={16} />
-            Nova obra
-          </Link>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <ExportButton
+            endpoint="/api/export/obras"
+            searchParams={{ q, status: statusFilter }}
+            filename={`obras-${new Date().toISOString().slice(0, 10)}`}
+          />
+          {canCreate && (
+            <Link
+              href="/obras/nova"
+              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
+            >
+              <Plus size={16} />
+              Nova obra
+            </Link>
+          )}
+        </div>
       </div>
 
       {isEmpty && !hasFilters ? (

@@ -9,6 +9,8 @@ import { getCurrentProfile } from '@/lib/supabase/profile'
 import { createClient } from '@/lib/supabase/server'
 import type { Obra, ObraStatus } from '@/lib/types'
 
+import RelatorioFdButton from './relatorio-fd-button'
+
 type PageProps = {
   params: { id: string }
 }
@@ -70,8 +72,9 @@ export default async function ObraDetalhePage({ params }: PageProps) {
             Cliente: {cliente?.nome ?? '—'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={obra.status as ObraStatus} />
+          <RelatorioFdButton obraId={obra.id} />
           {canEdit && (
             <Link
               href={`/obras/${obra.id}/editar`}
