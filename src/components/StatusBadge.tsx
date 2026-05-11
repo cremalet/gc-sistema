@@ -1,6 +1,10 @@
-import type { ObraStatus, OrcamentoStatus } from '@/lib/types'
+import type {
+  ObraStatus,
+  OrcamentoStatus,
+  StatusFdPagamento,
+} from '@/lib/types'
 
-type StatusKey = ObraStatus | OrcamentoStatus
+type StatusKey = ObraStatus | OrcamentoStatus | StatusFdPagamento
 
 type StatusConfig = { label: string; className: string }
 
@@ -47,6 +51,16 @@ const CONFIG: Record<StatusKey, StatusConfig> = {
   expirado: {
     label: 'Expirado',
     className: 'bg-slate-200 text-slate-700 border-slate-300',
+  },
+
+  // FD pagamento (calculado em runtime — não é coluna do banco)
+  pago: {
+    label: 'Pago',
+    className: 'bg-green-100 text-green-700 border-green-200',
+  },
+  vencido: {
+    label: 'Vencido',
+    className: 'bg-red-100 text-red-700 border-red-200',
   },
 }
 
