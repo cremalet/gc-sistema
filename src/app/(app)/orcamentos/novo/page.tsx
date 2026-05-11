@@ -17,16 +17,23 @@ export default async function NovoOrcamentoPage() {
 
   const supabase = createClient()
 
-  // Lista de obras da empresa pra povoar o select "Vincular a obra existente".
-  // RLS já filtra por empresa_id.
-  const { data: obras } = await supabase
-    .from('obras')
-    .select('id, codigo_obra, nome')
-    .order('codigo_obra', { ascending: false })
+  // RLS filtra por empresa em todas as queries.
+  const [obrasResult, clientesResult] = await Promise.all([
+    supabase
+      .from('obras')
+      .select('id, codigo_obra, nome')
+      .order('codigo_obra', { ascending: false }),
+    supabase.from('clientes').select('id, nome').order('nome'),
+  ])
 
-  const obraOptions = (obras ?? []).map((o) => ({
+  const obraOptions = (obrasResult.data ?? []).map((o) => ({
     value: o.id,
     label: `${o.codigo_obra} — ${o.nome}`,
+  }))
+
+  const clienteOptions = (clientesResult.data ?? []).map((c) => ({
+    value: c.id,
+    label: c.nome,
   }))
 
   return (
@@ -37,7 +44,10 @@ export default async function NovoOrcamentoPage() {
           Preencha os dados do orçamento. Você pode editar tudo depois.
         </p>
       </div>
-      <NovoOrcamentoForm obraOptions={obraOptions} />
+      <NovoOrcamentoForm
+        obraOptions={obraOptions}
+        clienteOptions={clienteOptions}
+      />
     </div>
   )
 }

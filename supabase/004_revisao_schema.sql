@@ -14,6 +14,16 @@
 begin;
 
 -- ============================================================
+-- 0. DROP DE VIEWS QUE DEPENDEM DE COLUNAS ALTERADAS
+-- ============================================================
+-- Estas views usam SELECT *.* e bloqueiam o DROP/ALTER de colunas
+-- abaixo. Serão recriadas no final da migration.
+drop view if exists obras_com_valores;
+drop view if exists contratos_financeiro;
+drop view if exists propostas_financeiro;
+drop view if exists itens_com_status;
+
+-- ============================================================
 -- 1. NOVA TABELA: clientes
 -- ============================================================
 -- Aceita PF e PJ via campo único `cnpj_cpf` (text, sem validação
@@ -431,10 +441,10 @@ alter table acordo_parcelas
 -- ============================================================
 
 alter table fd
-  add constraint fd_unidade_check check (
+  add constraint fd_unidade_enum check (
     unidade is null or unidade in ('UN', 'KG', 'M', 'M2', 'PC', 'OUTRO')
   ),
-  add constraint fd_valor_descontar_check check (valor_descontar <= valor);
+  add constraint fd_valor_descontar_max check (valor_descontar <= valor);
 
 -- ============================================================
 -- 14. Atualiza funções/triggers que usavam 'parcial'/'atrasada'
@@ -515,5 +525,173 @@ begin
     and status != v_novo_status;
 end;
 $$;
+
+-- ============================================================
+-- 15. RECRIA AS VIEWS DROPADAS NO INÍCIO
+-- ============================================================
+-- Definições idênticas às originais de 001_initial.sql. Como as colunas
+-- legacy de obras/contratos/propostas/itens foram removidas, as queries
+-- com SELECT * naturalmente passam a refletir o novo schema.
+
+create or replace view obras_com_valores with (security_invoker = true) as
+select
+  o.*,
+  calc.valor_total as valor_total_calculado,
+  calc.desconto as desconto_calculado,
+  calc.valor_final as valor_final_calculado,
+  calc.pct_sinal as pct_sinal_calculado,
+  calc.pct_fd as pct_fd_calculado,
+  calc.pct_entrega_material as pct_entrega_material_calculado,
+  calc.pct_medicao_instalacao as pct_medicao_instalacao_calculado,
+  calc.condicoes_pagamento as condicoes_pagamento_calculado,
+  calc.fonte as fonte_valores
+from obras o,
+  lateral calcular_valores_obra(o.id) calc;
+
+grant select on obras_com_valores to authenticated;
+
+create or replace view contratos_financeiro with (security_invoker = true) as
+select
+  c.*,
+  coalesce((
+    select sum(valor_total) from notas_fiscais nf
+    where nf.contrato_id = c.id and nf.status != 'cancelada'
+  ), 0) as total_nfs,
+  coalesce((
+    select sum(ap.valor_previsto)
+    from acordo_parcelas ap
+    join acordos_pagamento a on a.id = ap.acordo_id
+    where a.contrato_id = c.id
+      and a.status not in ('cancelado', 'convertido_nf')
+      and ap.status != 'cancelada'
+  ), 0) as total_acordos,
+  coalesce((
+    select sum(p.valor)
+    from pagamentos p
+    join notas_fiscais nf on nf.id = p.nota_id
+    where nf.contrato_id = c.id and nf.status != 'cancelada'
+  ), 0) as recebido_nfs,
+  coalesce((
+    select sum(p.valor)
+    from pagamentos p
+    join acordo_parcelas ap on ap.id = p.parcela_acordo_id
+    join acordos_pagamento a on a.id = ap.acordo_id
+    where a.contrato_id = c.id
+      and p.origem = 'acordo'
+      and a.status not in ('cancelado', 'convertido_nf')
+  ), 0) as recebido_acordos,
+  c.valor_total - (
+    coalesce((
+      select sum(valor_total) from notas_fiscais nf
+      where nf.contrato_id = c.id and nf.status != 'cancelada'
+    ), 0) +
+    coalesce((
+      select sum(ap.valor_previsto)
+      from acordo_parcelas ap
+      join acordos_pagamento a on a.id = ap.acordo_id
+      where a.contrato_id = c.id
+        and a.status not in ('cancelado', 'convertido_nf')
+        and ap.status != 'cancelada'
+    ), 0)
+  ) as saldo_a_faturar
+from contratos c;
+
+grant select on contratos_financeiro to authenticated;
+
+create or replace view propostas_financeiro with (security_invoker = true) as
+select
+  p.*,
+  coalesce((
+    select sum(valor_total) from notas_fiscais nf
+    where nf.proposta_id = p.id and nf.status != 'cancelada'
+  ), 0) as total_nfs,
+  coalesce((
+    select sum(ap.valor_previsto)
+    from acordo_parcelas ap
+    join acordos_pagamento a on a.id = ap.acordo_id
+    where a.proposta_id = p.id
+      and a.status not in ('cancelado', 'convertido_nf')
+      and ap.status != 'cancelada'
+  ), 0) as total_acordos,
+  coalesce((
+    select sum(pg.valor)
+    from pagamentos pg
+    join notas_fiscais nf on nf.id = pg.nota_id
+    where nf.proposta_id = p.id and nf.status != 'cancelada'
+  ), 0) as recebido_nfs,
+  coalesce((
+    select sum(pg.valor)
+    from pagamentos pg
+    join acordo_parcelas ap on ap.id = pg.parcela_acordo_id
+    join acordos_pagamento a on a.id = ap.acordo_id
+    where a.proposta_id = p.id
+      and pg.origem = 'acordo'
+      and a.status not in ('cancelado', 'convertido_nf')
+  ), 0) as recebido_acordos
+from propostas p;
+
+grant select on propostas_financeiro to authenticated;
+
+create or replace view itens_com_status with (security_invoker = true) as
+select
+  i.*,
+  coalesce(e.fab_status, 'pendente') as status_fabricacao,
+  coalesce(e.ent_status, 'pendente') as status_entrega,
+  coalesce(e.inst_status, 'pendente') as status_instalacao,
+  coalesce(e.med_status, 'pendente') as status_medicao,
+  coalesce(e.fab_qtd, 0) as qtd_fabricada,
+  coalesce(e.ent_qtd, 0) as qtd_entregue,
+  coalesce(e.inst_qtd, 0) as qtd_instalada,
+  coalesce(e.med_qtd, 0) as qtd_medida,
+  e.fab_data_atualizacao as data_ultima_fabricacao,
+  e.fab_data_fim as data_fabricacao_concluida,
+  e.ent_data_atualizacao as data_ultima_entrega,
+  e.ent_data_fim as data_entrega_concluida,
+  e.inst_data_atualizacao as data_ultima_instalacao,
+  e.inst_data_fim as data_instalacao_concluida,
+  e.med_data_atualizacao as data_ultima_medicao,
+  e.med_data_fim as data_medicao_concluida,
+  e.fab_responsavel as responsavel_fabricacao,
+  e.ent_responsavel as responsavel_entrega,
+  e.inst_responsavel as responsavel_instalacao,
+  e.med_responsavel as responsavel_medicao,
+  case
+    when e.med_status = 'concluido' then 'medido'
+    when e.med_status = 'andamento' then 'medindo'
+    when e.inst_status = 'concluido' then 'aguardando_medicao'
+    when e.inst_status = 'andamento' then 'instalando'
+    when e.ent_status = 'concluido' then 'aguardando_instalacao'
+    when e.ent_status = 'andamento' then 'entregando'
+    when e.fab_status = 'concluido' then 'aguardando_entrega'
+    when e.fab_status = 'andamento' then 'fabricando'
+    else 'aguardando_fabricacao'
+  end as status_atual,
+  case
+    when e.med_status = 'concluido' then 'finalizado'
+    when e.inst_status = 'concluido' or e.med_status in ('andamento') then 'medicao'
+    when e.ent_status = 'concluido' or e.inst_status in ('andamento') then 'instalacao'
+    when e.fab_status = 'concluido' or e.ent_status in ('andamento') then 'entrega'
+    else 'fabricacao'
+  end as etapa_atual,
+  case
+    when coalesce(e.quantidade_total, 0) = 0 then 0
+    else round((
+      coalesce(e.fab_qtd, 0) / e.quantidade_total * 25 +
+      coalesce(e.ent_qtd, 0) / e.quantidade_total * 25 +
+      coalesce(e.inst_qtd, 0) / e.quantidade_total * 25 +
+      coalesce(e.med_qtd, 0) / e.quantidade_total * 25
+    )::numeric, 2)
+  end as progresso_pct,
+  (
+    case when e.fab_status = 'concluido' then 25 else 0 end +
+    case when e.ent_status = 'concluido' then 25 else 0 end +
+    case when e.inst_status = 'concluido' then 25 else 0 end +
+    case when e.med_status = 'concluido' then 25 else 0 end
+  ) as progresso_etapas_pct,
+  jsonb_array_length(coalesce(e.evidencias, '[]'::jsonb)) as evidencias_count
+from itens i
+left join execucao e on e.item_id = i.id;
+
+grant select on itens_com_status to authenticated;
 
 commit;

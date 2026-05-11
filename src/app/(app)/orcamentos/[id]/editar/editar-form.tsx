@@ -14,12 +14,14 @@ type EditarOrcamentoFormProps = {
   id: string
   defaultValues: OrcamentoFormValues
   obraOptions: readonly { value: string; label: string }[]
+  clienteOptions: readonly { value: string; label: string }[]
 }
 
 export default function EditarOrcamentoForm({
   id,
   defaultValues,
   obraOptions,
+  clienteOptions,
 }: EditarOrcamentoFormProps) {
   const router = useRouter()
 
@@ -40,6 +42,7 @@ export default function EditarOrcamentoForm({
     <OrcamentoForm
       defaultValues={defaultValues}
       obraOptions={obraOptions}
+      clienteOptions={clienteOptions}
       submitLabel="Salvar alterações"
       cancelHref={`/orcamentos/${id}`}
       onSubmit={handleSubmit}

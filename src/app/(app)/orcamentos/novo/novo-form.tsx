@@ -13,10 +13,12 @@ import { createOrcamento } from './actions'
 
 type NovoOrcamentoFormProps = {
   obraOptions: readonly { value: string; label: string }[]
+  clienteOptions: readonly { value: string; label: string }[]
 }
 
 export default function NovoOrcamentoForm({
   obraOptions,
+  clienteOptions,
 }: NovoOrcamentoFormProps) {
   const router = useRouter()
 
@@ -37,6 +39,7 @@ export default function NovoOrcamentoForm({
     <OrcamentoForm
       defaultValues={emptyFormValues()}
       obraOptions={obraOptions}
+      clienteOptions={clienteOptions}
       submitLabel="Salvar rascunho"
       cancelHref="/orcamentos"
       onSubmit={handleSubmit}

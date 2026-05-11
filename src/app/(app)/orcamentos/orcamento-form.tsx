@@ -2,14 +2,13 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 
 import FormField from '@/components/form/FormField'
 import FormSection from '@/components/form/FormSection'
 import Input from '@/components/form/Input'
 import Select from '@/components/form/Select'
 import Textarea from '@/components/form/Textarea'
-import { formatPhoneMask } from '@/lib/phone'
 
 import {
   orcamentoSchema,
@@ -19,6 +18,7 @@ import {
 type OrcamentoFormProps = {
   defaultValues: OrcamentoFormValues
   obraOptions: readonly { value: string; label: string }[]
+  clienteOptions: readonly { value: string; label: string }[]
   submitLabel: string
   cancelHref: string
   /** Chamado com os valores validados. Responsável por toast + navegação. */
@@ -28,6 +28,7 @@ type OrcamentoFormProps = {
 export default function OrcamentoForm({
   defaultValues,
   obraOptions,
+  clienteOptions,
   submitLabel,
   cancelHref,
   onSubmit,
@@ -35,7 +36,6 @@ export default function OrcamentoForm({
   const {
     register,
     handleSubmit,
-    control,
     formState: { errors, isSubmitting },
   } = useForm<OrcamentoFormValues>({
     resolver: zodResolver(orcamentoSchema),
@@ -81,84 +81,35 @@ export default function OrcamentoForm({
 
       <FormSection title="Cliente">
         <FormField
-          label="Nome do cliente"
-          htmlFor="cliente_nome"
+          label="Cliente"
+          htmlFor="cliente_id"
           required
-          error={errors.cliente_nome?.message}
+          hint={
+            clienteOptions.length === 0
+              ? 'Nenhum cliente cadastrado ainda — cadastre um antes'
+              : 'Não encontrou o cliente? Cadastre antes em /clientes'
+          }
+          error={errors.cliente_id?.message}
           className="md:col-span-2"
         >
-          <Input
-            id="cliente_nome"
-            type="text"
-            disabled={isSubmitting}
-            {...register('cliente_nome')}
+          <Select
+            id="cliente_id"
+            options={clienteOptions}
+            placeholder="— Selecione um cliente —"
+            disabled={isSubmitting || clienteOptions.length === 0}
+            {...register('cliente_id')}
           />
         </FormField>
 
-        <FormField
-          label="Contato"
-          htmlFor="cliente_contato"
-          hint="Nome da pessoa de contato"
-          error={errors.cliente_contato?.message}
-        >
-          <Input
-            id="cliente_contato"
-            type="text"
-            disabled={isSubmitting}
-            {...register('cliente_contato')}
-          />
-        </FormField>
-
-        <FormField
-          label="Telefone"
-          htmlFor="cliente_telefone"
-          error={errors.cliente_telefone?.message}
-        >
-          <Controller
-            name="cliente_telefone"
-            control={control}
-            render={({ field }) => (
-              <Input
-                id="cliente_telefone"
-                type="tel"
-                placeholder="(00) 00000-0000"
-                disabled={isSubmitting}
-                value={field.value ?? ''}
-                onChange={(e) =>
-                  field.onChange(formatPhoneMask(e.target.value))
-                }
-                onBlur={field.onBlur}
-                ref={field.ref}
-              />
-            )}
-          />
-        </FormField>
-
-        <FormField
-          label="Email"
-          htmlFor="cliente_email"
-          error={errors.cliente_email?.message}
-        >
-          <Input
-            id="cliente_email"
-            type="email"
-            disabled={isSubmitting}
-            {...register('cliente_email')}
-          />
-        </FormField>
-
-        <FormField
-          label="Cidade"
-          htmlFor="cliente_cidade"
-          error={errors.cliente_cidade?.message}
-        >
-          <Input
-            id="cliente_cidade"
-            type="text"
-            disabled={isSubmitting}
-            {...register('cliente_cidade')}
-          />
-        </FormField>
+        <p className="text-xs text-gray-500 md:col-span-2">
+          <Link
+            href="/clientes/novo"
+            className="underline hover:text-gray-700"
+            target="_blank"
+          >
+            + Cadastrar novo cliente
+          </Link>
+        </p>
       </FormSection>
 
       <FormSection title="Escopo">

@@ -21,21 +21,35 @@ export default async function EditarOrcamentoPage({ params }: PageProps) {
 
   const supabase = createClient()
 
-  const [orcamentoResult, obrasResult] = await Promise.all([
-    supabase.from('orcamentos').select('*').eq('id', params.id).maybeSingle(),
+  const [orcamentoResult, obrasResult, clientesResult] = await Promise.all([
+    supabase
+      .from('orcamentos')
+      .select('*, cliente:clientes(nome)')
+      .eq('id', params.id)
+      .maybeSingle(),
     supabase
       .from('obras')
       .select('id, codigo_obra, nome')
       .order('codigo_obra', { ascending: false }),
+    supabase.from('clientes').select('id, nome').order('nome'),
   ])
 
   if (!orcamentoResult.data) notFound()
 
-  const orcamento = orcamentoResult.data as Orcamento
+  // Separa o cliente aninhado pro narrowing do tipo Orcamento.
+  const { cliente, ...orcamentoRow } = orcamentoResult.data as Orcamento & {
+    cliente: { nome: string } | null
+  }
+  const orcamento = orcamentoRow as Orcamento
 
   const obraOptions = (obrasResult.data ?? []).map((o) => ({
     value: o.id,
     label: `${o.codigo_obra} — ${o.nome}`,
+  }))
+
+  const clienteOptions = (clientesResult.data ?? []).map((c) => ({
+    value: c.id,
+    label: c.nome,
   }))
 
   return (
@@ -46,13 +60,14 @@ export default async function EditarOrcamentoPage({ params }: PageProps) {
           {orcamento.numero
             ? `Orçamento ${orcamento.numero}`
             : 'Orçamento sem número'}{' '}
-          · {orcamento.cliente_nome}
+          · {cliente?.nome ?? '—'}
         </p>
       </div>
       <EditarOrcamentoForm
         id={orcamento.id}
         defaultValues={orcamentoToFormValues(orcamento)}
         obraOptions={obraOptions}
+        clienteOptions={clienteOptions}
       />
     </div>
   )

@@ -8,11 +8,7 @@ import type { OrcamentoStatus } from '@/lib/types'
 export type CreateOrcamentoInput = {
   numero: string | null
   data_solicitacao: string
-  cliente_nome: string
-  cliente_contato: string | null
-  cliente_telefone: string | null
-  cliente_email: string | null
-  cliente_cidade: string | null
+  cliente_id: string
   descricao: string | null
   escopo_resumo: string | null
   valor_estimado: number

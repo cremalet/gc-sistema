@@ -69,15 +69,26 @@ export default async function OrcamentosPage({
   let query = supabase
     .from('orcamentos')
     .select(
-      'id, numero, data_solicitacao, cliente_nome, cliente_cidade, status, valor_estimado, responsavel',
+      'id, numero, data_solicitacao, cliente_id, status, valor_estimado, responsavel, cliente:clientes(nome, cidade)',
       { count: 'exact' },
     )
     .order('data_solicitacao', { ascending: false })
 
   if (busca) {
-    query = query.or(
-      `numero.ilike.%${busca}%,cliente_nome.ilike.%${busca}%,cliente_contato.ilike.%${busca}%,cliente_email.ilike.%${busca}%`,
-    )
+    // Cliente virou FK, então busca cross-table exige resolver IDs antes.
+    const { data: clientesMatch } = await supabase
+      .from('clientes')
+      .select('id')
+      .or(
+        `nome.ilike.%${busca}%,contato.ilike.%${busca}%,email.ilike.%${busca}%`,
+      )
+
+    const clienteIds = (clientesMatch ?? []).map((c) => c.id)
+    const clienteFilter =
+      clienteIds.length > 0 ? `cliente_id.in.(${clienteIds.join(',')})` : null
+
+    const filters = [`numero.ilike.%${busca}%`, clienteFilter].filter(Boolean)
+    query = query.or(filters.join(','))
   }
 
   if (statusFilter && isValidStatus(statusFilter)) {

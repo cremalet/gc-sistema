@@ -44,18 +44,27 @@ export type ContratoStatus =
   | 'suspenso'
   | 'rescindido'
 
-export type NotaFiscalStatus = 'emitida' | 'parcial' | 'paga' | 'cancelada'
+export type NotaFiscalStatus =
+  | 'emitida'
+  | 'paga_parcialmente'
+  | 'paga'
+  | 'cancelada'
 
 export type AcordoStatus = 'aberto' | 'quitado' | 'cancelado' | 'convertido_nf'
 
+// 'atrasada' foi removida do banco — agora é calculada em runtime
+// (data_vencimento < today and status = 'pendente')
 export type ParcelaStatus =
   | 'pendente'
   | 'paga'
-  | 'parcial'
-  | 'atrasada'
+  | 'paga_parcialmente'
   | 'cancelada'
 
-export type MotivoRejeicaoOrcamento =
+// Status visual derivado de FD (não existe no banco — calculado em runtime)
+export type StatusFdPagamento = 'pendente' | 'pago' | 'vencido'
+
+// Mesma lista usada por orcamentos e propostas
+export type MotivoRejeicao =
   | 'preco_alto'
   | 'prazo_curto'
   | 'perdeu_concorrente'
@@ -65,7 +74,10 @@ export type MotivoRejeicaoOrcamento =
   | 'sem_capacidade'
   | 'outro'
 
-export const MOTIVO_REJEICAO_LABELS: Record<MotivoRejeicaoOrcamento, string> = {
+// Alias mantido pra compatibilidade com código existente
+export type MotivoRejeicaoOrcamento = MotivoRejeicao
+
+export const MOTIVO_REJEICAO_LABELS: Record<MotivoRejeicao, string> = {
   preco_alto: 'Preço acima do esperado',
   prazo_curto: 'Prazo inviável',
   perdeu_concorrente: 'Cliente escolheu concorrente',
@@ -73,6 +85,21 @@ export const MOTIVO_REJEICAO_LABELS: Record<MotivoRejeicaoOrcamento, string> = {
   sem_resposta: 'Cliente não respondeu',
   escopo_mudou: 'Escopo do projeto mudou',
   sem_capacidade: 'Não tínhamos capacidade',
+  outro: 'Outro',
+}
+
+export type MotivoRescisaoContrato =
+  | 'inadimplencia'
+  | 'descumprimento_prazo'
+  | 'acordo_partes'
+  | 'forca_maior'
+  | 'outro'
+
+export const MOTIVO_RESCISAO_LABELS: Record<MotivoRescisaoContrato, string> = {
+  inadimplencia: 'Inadimplência',
+  descumprimento_prazo: 'Descumprimento de prazo',
+  acordo_partes: 'Acordo entre as partes',
+  forca_maior: 'Força maior',
   outro: 'Outro',
 }
 
@@ -110,6 +137,11 @@ export type Profile = Omit<Tables['profiles']['Row'], 'perfil'> & {
 export type ProfileInsert = Tables['profiles']['Insert']
 export type ProfileUpdate = Tables['profiles']['Update']
 
+// Clientes (tabela nova, aceita PF e PJ via cnpj_cpf único campo)
+export type Cliente = Tables['clientes']['Row']
+export type ClienteInsert = Tables['clientes']['Insert']
+export type ClienteUpdate = Tables['clientes']['Update']
+
 // Funil comercial
 // orcamentos.status é string no gen (CHECK constraint) — narrar pra OrcamentoStatus
 export type Orcamento = Omit<Tables['orcamentos']['Row'], 'status'> & {
@@ -118,24 +150,29 @@ export type Orcamento = Omit<Tables['orcamentos']['Row'], 'status'> & {
 export type OrcamentoInsert = Tables['orcamentos']['Insert']
 export type OrcamentoUpdate = Tables['orcamentos']['Update']
 
-// Subset de campos pra listagem — herda narrowing de Orcamento
+// Subset de campos pra listagem — JOIN com clientes pra exibir nome e cidade
 export type OrcamentoListItem = Pick<
   Orcamento,
   | 'id'
   | 'numero'
   | 'data_solicitacao'
-  | 'cliente_nome'
-  | 'cliente_cidade'
+  | 'cliente_id'
   | 'status'
   | 'valor_estimado'
   | 'responsavel'
->
+> & {
+  cliente: Pick<Cliente, 'nome' | 'cidade'> | null
+}
 
-export type Proposta = Tables['propostas']['Row']
+export type Proposta = Omit<Tables['propostas']['Row'], 'status'> & {
+  status: PropostaStatus
+}
 export type PropostaInsert = Tables['propostas']['Insert']
 export type PropostaUpdate = Tables['propostas']['Update']
 
-export type Contrato = Tables['contratos']['Row']
+export type Contrato = Omit<Tables['contratos']['Row'], 'status'> & {
+  status: ContratoStatus
+}
 export type ContratoInsert = Tables['contratos']['Insert']
 export type ContratoUpdate = Tables['contratos']['Update']
 
@@ -190,6 +227,7 @@ export type ObraListItem = Omit<
   codigo_obra: string
   nome: string
   status: ObraStatus
+  cliente: Pick<Cliente, 'nome'> | null
 }
 
 export type ItemComStatus = Views['itens_com_status']['Row']

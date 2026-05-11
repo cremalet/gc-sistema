@@ -209,6 +209,72 @@ export type Database = {
           },
         ]
       }
+      clientes: {
+        Row: {
+          cep: string | null
+          cidade: string | null
+          cnpj_cpf: string | null
+          contato: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          empresa_id: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacao: string | null
+          telefone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          contato?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacao?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj_cpf?: string | null
+          contato?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacao?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos: {
         Row: {
           anexos: Json | null
@@ -217,9 +283,10 @@ export type Database = {
           created_by: string | null
           data_assinatura: string | null
           descricao: string | null
-          doc_url: string | null
+          detalhe_rescisao: string | null
           empresa_id: string
           id: string
+          motivo_rescisao: string | null
           numero: string
           obra_id: string
           observacao: string | null
@@ -240,9 +307,10 @@ export type Database = {
           created_by?: string | null
           data_assinatura?: string | null
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rescisao?: string | null
           empresa_id: string
           id?: string
+          motivo_rescisao?: string | null
           numero: string
           obra_id: string
           observacao?: string | null
@@ -263,9 +331,10 @@ export type Database = {
           created_by?: string | null
           data_assinatura?: string | null
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rescisao?: string | null
           empresa_id?: string
           id?: string
+          motivo_rescisao?: string | null
           numero?: string
           obra_id?: string
           observacao?: string | null
@@ -340,24 +409,51 @@ export type Database = {
       }
       empresas: {
         Row: {
+          cep: string | null
+          cidade: string | null
           cnpj: string | null
           created_at: string | null
+          email: string | null
+          endereco: string | null
           id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          logo_url: string | null
           nome: string
+          razao_social: string
+          telefone: string | null
           updated_at: string | null
         }
         Insert: {
+          cep?: string | null
+          cidade?: string | null
           cnpj?: string | null
           created_at?: string | null
+          email?: string | null
+          endereco?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          logo_url?: string | null
           nome: string
+          razao_social: string
+          telefone?: string | null
           updated_at?: string | null
         }
         Update: {
+          cep?: string | null
+          cidade?: string | null
           cnpj?: string | null
           created_at?: string | null
+          email?: string | null
+          endereco?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          logo_url?: string | null
           nome?: string
+          razao_social?: string
+          telefone?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -370,6 +466,7 @@ export type Database = {
           ent_data_fim: string | null
           ent_data_inicio: string | null
           ent_observacao: string | null
+          ent_previsao_fim: string | null
           ent_qtd: number
           ent_responsavel: string | null
           ent_status: string | null
@@ -378,27 +475,35 @@ export type Database = {
           fab_data_fim: string | null
           fab_data_inicio: string | null
           fab_observacao: string | null
+          fab_previsao_fim: string | null
           fab_qtd: number
           fab_responsavel: string | null
           fab_status: string | null
+          foto_url: string | null
           id: string
           inst_data_atualizacao: string | null
           inst_data_fim: string | null
           inst_data_inicio: string | null
           inst_observacao: string | null
+          inst_previsao_fim: string | null
           inst_qtd: number
           inst_responsavel: string | null
           inst_status: string | null
           item_id: string
+          localizacao: string | null
           med_data_atualizacao: string | null
           med_data_fim: string | null
           med_data_inicio: string | null
           med_observacao: string | null
+          med_previsao_fim: string | null
           med_qtd: number
           med_responsavel: string | null
           med_status: string | null
           quantidade_total: number
+          sequencial: number
           updated_at: string | null
+          valor_total: number | null
+          valor_unit: number | null
         }
         Insert: {
           created_at?: string | null
@@ -407,6 +512,7 @@ export type Database = {
           ent_data_fim?: string | null
           ent_data_inicio?: string | null
           ent_observacao?: string | null
+          ent_previsao_fim?: string | null
           ent_qtd?: number
           ent_responsavel?: string | null
           ent_status?: string | null
@@ -415,27 +521,35 @@ export type Database = {
           fab_data_fim?: string | null
           fab_data_inicio?: string | null
           fab_observacao?: string | null
+          fab_previsao_fim?: string | null
           fab_qtd?: number
           fab_responsavel?: string | null
           fab_status?: string | null
+          foto_url?: string | null
           id?: string
           inst_data_atualizacao?: string | null
           inst_data_fim?: string | null
           inst_data_inicio?: string | null
           inst_observacao?: string | null
+          inst_previsao_fim?: string | null
           inst_qtd?: number
           inst_responsavel?: string | null
           inst_status?: string | null
           item_id: string
+          localizacao?: string | null
           med_data_atualizacao?: string | null
           med_data_fim?: string | null
           med_data_inicio?: string | null
           med_observacao?: string | null
+          med_previsao_fim?: string | null
           med_qtd?: number
           med_responsavel?: string | null
           med_status?: string | null
           quantidade_total: number
+          sequencial: number
           updated_at?: string | null
+          valor_total?: number | null
+          valor_unit?: number | null
         }
         Update: {
           created_at?: string | null
@@ -444,6 +558,7 @@ export type Database = {
           ent_data_fim?: string | null
           ent_data_inicio?: string | null
           ent_observacao?: string | null
+          ent_previsao_fim?: string | null
           ent_qtd?: number
           ent_responsavel?: string | null
           ent_status?: string | null
@@ -452,27 +567,35 @@ export type Database = {
           fab_data_fim?: string | null
           fab_data_inicio?: string | null
           fab_observacao?: string | null
+          fab_previsao_fim?: string | null
           fab_qtd?: number
           fab_responsavel?: string | null
           fab_status?: string | null
+          foto_url?: string | null
           id?: string
           inst_data_atualizacao?: string | null
           inst_data_fim?: string | null
           inst_data_inicio?: string | null
           inst_observacao?: string | null
+          inst_previsao_fim?: string | null
           inst_qtd?: number
           inst_responsavel?: string | null
           inst_status?: string | null
           item_id?: string
+          localizacao?: string | null
           med_data_atualizacao?: string | null
           med_data_fim?: string | null
           med_data_inicio?: string | null
           med_observacao?: string | null
+          med_previsao_fim?: string | null
           med_qtd?: number
           med_responsavel?: string | null
           med_status?: string | null
           quantidade_total?: number
+          sequencial?: number
           updated_at?: string | null
+          valor_total?: number | null
+          valor_unit?: number | null
         }
         Relationships: [
           {
@@ -636,6 +759,7 @@ export type Database = {
           localizacao: string | null
           numero: number | null
           obra_id: string
+          observacao: string | null
           proposta_id: string | null
           quantidade: number | null
           tipo: string | null
@@ -661,6 +785,7 @@ export type Database = {
           localizacao?: string | null
           numero?: number | null
           obra_id: string
+          observacao?: string | null
           proposta_id?: string | null
           quantidade?: number | null
           tipo?: string | null
@@ -686,6 +811,7 @@ export type Database = {
           localizacao?: string | null
           numero?: number | null
           obra_id?: string
+          observacao?: string | null
           proposta_id?: string | null
           quantidade?: number | null
           tipo?: string | null
@@ -770,13 +896,16 @@ export type Database = {
       }
       notas_fiscais: {
         Row: {
+          chave_nfe: string | null
           contrato_id: string | null
           created_at: string | null
           created_by: string | null
+          data_cancelamento: string | null
           data_emissao: string
           data_vencimento: string | null
           empresa_id: string
           id: string
+          motivo_cancelamento: string | null
           numero: string
           obra_id: string
           observacao: string | null
@@ -790,13 +919,16 @@ export type Database = {
           xml_url: string | null
         }
         Insert: {
+          chave_nfe?: string | null
           contrato_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_cancelamento?: string | null
           data_emissao?: string
           data_vencimento?: string | null
           empresa_id: string
           id?: string
+          motivo_cancelamento?: string | null
           numero: string
           obra_id: string
           observacao?: string | null
@@ -810,13 +942,16 @@ export type Database = {
           xml_url?: string | null
         }
         Update: {
+          chave_nfe?: string | null
           contrato_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_cancelamento?: string | null
           data_emissao?: string
           data_vencimento?: string | null
           empresa_id?: string
           id?: string
+          motivo_cancelamento?: string | null
           numero?: string
           obra_id?: string
           observacao?: string | null
@@ -906,100 +1041,68 @@ export type Database = {
         Row: {
           cep: string | null
           cidade: string | null
-          cliente: string | null
+          cliente_id: string
           codigo_obra: string
-          contato: string | null
-          cpf_cnpj: string | null
           created_at: string | null
           created_by: string | null
           data_inicio: string | null
           data_prevista_fim: string | null
           data_real_fim: string | null
-          desconto: number
-          doc_url: string | null
-          email: string | null
           empresa_id: string
           endereco: string | null
-          forma_pagamento: string | null
           id: string
           nome: string
-          observacoes: string | null
-          pct_entrega_material: number | null
-          pct_fd: number | null
-          pct_medicao_instalacao: number | null
-          pct_sinal: number | null
+          observacao: string | null
           prazo_execucao: string | null
           status: string
-          telefone: string | null
           updated_at: string | null
-          valor_final: number | null
-          valor_total: number
         }
         Insert: {
           cep?: string | null
           cidade?: string | null
-          cliente?: string | null
+          cliente_id: string
           codigo_obra: string
-          contato?: string | null
-          cpf_cnpj?: string | null
           created_at?: string | null
           created_by?: string | null
           data_inicio?: string | null
           data_prevista_fim?: string | null
           data_real_fim?: string | null
-          desconto?: number
-          doc_url?: string | null
-          email?: string | null
           empresa_id: string
           endereco?: string | null
-          forma_pagamento?: string | null
           id?: string
           nome: string
-          observacoes?: string | null
-          pct_entrega_material?: number | null
-          pct_fd?: number | null
-          pct_medicao_instalacao?: number | null
-          pct_sinal?: number | null
+          observacao?: string | null
           prazo_execucao?: string | null
           status?: string
-          telefone?: string | null
           updated_at?: string | null
-          valor_final?: number | null
-          valor_total?: number
         }
         Update: {
           cep?: string | null
           cidade?: string | null
-          cliente?: string | null
+          cliente_id?: string
           codigo_obra?: string
-          contato?: string | null
-          cpf_cnpj?: string | null
           created_at?: string | null
           created_by?: string | null
           data_inicio?: string | null
           data_prevista_fim?: string | null
           data_real_fim?: string | null
-          desconto?: number
-          doc_url?: string | null
-          email?: string | null
           empresa_id?: string
           endereco?: string | null
-          forma_pagamento?: string | null
           id?: string
           nome?: string
-          observacoes?: string | null
-          pct_entrega_material?: number | null
-          pct_fd?: number | null
-          pct_medicao_instalacao?: number | null
-          pct_sinal?: number | null
+          observacao?: string | null
           prazo_execucao?: string | null
           status?: string
-          telefone?: string | null
           updated_at?: string | null
-          valor_final?: number | null
-          valor_total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "obras_cliente_fk"
+            columns: ["cliente_id", "empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id", "empresa_id"]
+          },
           {
             foreignKeyName: "obras_created_by_fkey"
             columns: ["created_by"]
@@ -1019,11 +1122,7 @@ export type Database = {
       orcamentos: {
         Row: {
           anexos: Json | null
-          cliente_cidade: string | null
-          cliente_contato: string | null
-          cliente_email: string | null
-          cliente_nome: string
-          cliente_telefone: string | null
+          cliente_id: string
           created_at: string | null
           created_by: string | null
           data_decisao: string | null
@@ -1031,7 +1130,6 @@ export type Database = {
           data_solicitacao: string
           descricao: string | null
           detalhe_rejeicao: string | null
-          doc_url: string | null
           empresa_id: string
           escopo_resumo: string | null
           id: string
@@ -1047,11 +1145,7 @@ export type Database = {
         }
         Insert: {
           anexos?: Json | null
-          cliente_cidade?: string | null
-          cliente_contato?: string | null
-          cliente_email?: string | null
-          cliente_nome: string
-          cliente_telefone?: string | null
+          cliente_id: string
           created_at?: string | null
           created_by?: string | null
           data_decisao?: string | null
@@ -1059,7 +1153,6 @@ export type Database = {
           data_solicitacao?: string
           descricao?: string | null
           detalhe_rejeicao?: string | null
-          doc_url?: string | null
           empresa_id: string
           escopo_resumo?: string | null
           id?: string
@@ -1075,11 +1168,7 @@ export type Database = {
         }
         Update: {
           anexos?: Json | null
-          cliente_cidade?: string | null
-          cliente_contato?: string | null
-          cliente_email?: string | null
-          cliente_nome?: string
-          cliente_telefone?: string | null
+          cliente_id?: string
           created_at?: string | null
           created_by?: string | null
           data_decisao?: string | null
@@ -1087,7 +1176,6 @@ export type Database = {
           data_solicitacao?: string
           descricao?: string | null
           detalhe_rejeicao?: string | null
-          doc_url?: string | null
           empresa_id?: string
           escopo_resumo?: string | null
           id?: string
@@ -1102,6 +1190,13 @@ export type Database = {
           valor_estimado?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_fk"
+            columns: ["cliente_id", "empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id", "empresa_id"]
+          },
           {
             foreignKeyName: "orcamentos_created_by_fkey"
             columns: ["created_by"]
@@ -1148,7 +1243,7 @@ export type Database = {
       }
       pagamentos: {
         Row: {
-          comprovante_url: string | null
+          anexo: string | null
           created_at: string | null
           created_by: string | null
           data_pagamento: string
@@ -1164,7 +1259,7 @@ export type Database = {
           valor: number
         }
         Insert: {
-          comprovante_url?: string | null
+          anexo?: string | null
           created_at?: string | null
           created_by?: string | null
           data_pagamento?: string
@@ -1180,7 +1275,7 @@ export type Database = {
           valor: number
         }
         Update: {
-          comprovante_url?: string | null
+          anexo?: string | null
           created_at?: string | null
           created_by?: string | null
           data_pagamento?: string
@@ -1263,6 +1358,7 @@ export type Database = {
           id: string
           nome: string
           perfil: string
+          telefone: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1273,6 +1369,7 @@ export type Database = {
           id: string
           nome: string
           perfil: string
+          telefone?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1283,6 +1380,7 @@ export type Database = {
           id?: string
           nome?: string
           perfil?: string
+          telefone?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1301,13 +1399,16 @@ export type Database = {
           condicoes_pagamento: string | null
           created_at: string | null
           created_by: string | null
+          data_decisao: string | null
           data_emissao: string | null
+          data_envio: string | null
           data_validade: string | null
           desconto: number
           descricao: string | null
-          doc_url: string | null
+          detalhe_rejeicao: string | null
           empresa_id: string
           id: string
+          motivo_rejeicao: string | null
           numero: string
           obra_id: string
           observacao: string | null
@@ -1325,13 +1426,16 @@ export type Database = {
           condicoes_pagamento?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_decisao?: string | null
           data_emissao?: string | null
+          data_envio?: string | null
           data_validade?: string | null
           desconto?: number
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rejeicao?: string | null
           empresa_id: string
           id?: string
+          motivo_rejeicao?: string | null
           numero: string
           obra_id: string
           observacao?: string | null
@@ -1349,13 +1453,16 @@ export type Database = {
           condicoes_pagamento?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_decisao?: string | null
           data_emissao?: string | null
+          data_envio?: string | null
           data_validade?: string | null
           desconto?: number
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rejeicao?: string | null
           empresa_id?: string
           id?: string
+          motivo_rejeicao?: string | null
           numero?: string
           obra_id?: string
           observacao?: string | null
@@ -1423,9 +1530,10 @@ export type Database = {
           created_by: string | null
           data_assinatura: string | null
           descricao: string | null
-          doc_url: string | null
+          detalhe_rescisao: string | null
           empresa_id: string | null
           id: string | null
+          motivo_rescisao: string | null
           numero: string | null
           obra_id: string | null
           observacao: string | null
@@ -1451,9 +1559,10 @@ export type Database = {
           created_by?: string | null
           data_assinatura?: string | null
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rescisao?: string | null
           empresa_id?: string | null
           id?: string | null
+          motivo_rescisao?: string | null
           numero?: string | null
           obra_id?: string | null
           observacao?: string | null
@@ -1479,9 +1588,10 @@ export type Database = {
           created_by?: string | null
           data_assinatura?: string | null
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rescisao?: string | null
           empresa_id?: string | null
           id?: string | null
+          motivo_rescisao?: string | null
           numero?: string | null
           obra_id?: string | null
           observacao?: string | null
@@ -1586,6 +1696,7 @@ export type Database = {
           localizacao: string | null
           numero: number | null
           obra_id: string | null
+          observacao: string | null
           progresso_etapas_pct: number | null
           progresso_pct: number | null
           proposta_id: string | null
@@ -1687,45 +1798,39 @@ export type Database = {
         Row: {
           cep: string | null
           cidade: string | null
-          cliente: string | null
+          cliente_id: string | null
           codigo_obra: string | null
           condicoes_pagamento_calculado: string | null
-          contato: string | null
-          cpf_cnpj: string | null
           created_at: string | null
           created_by: string | null
           data_inicio: string | null
           data_prevista_fim: string | null
           data_real_fim: string | null
-          desconto: number | null
           desconto_calculado: number | null
-          doc_url: string | null
-          email: string | null
           empresa_id: string | null
           endereco: string | null
           fonte_valores: string | null
-          forma_pagamento: string | null
           id: string | null
           nome: string | null
-          observacoes: string | null
-          pct_entrega_material: number | null
+          observacao: string | null
           pct_entrega_material_calculado: number | null
-          pct_fd: number | null
           pct_fd_calculado: number | null
-          pct_medicao_instalacao: number | null
           pct_medicao_instalacao_calculado: number | null
-          pct_sinal: number | null
           pct_sinal_calculado: number | null
           prazo_execucao: string | null
           status: string | null
-          telefone: string | null
           updated_at: string | null
-          valor_final: number | null
           valor_final_calculado: number | null
-          valor_total: number | null
           valor_total_calculado: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "obras_cliente_fk"
+            columns: ["cliente_id", "empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id", "empresa_id"]
+          },
           {
             foreignKeyName: "obras_created_by_fkey"
             columns: ["created_by"]
@@ -1810,13 +1915,16 @@ export type Database = {
           condicoes_pagamento: string | null
           created_at: string | null
           created_by: string | null
+          data_decisao: string | null
           data_emissao: string | null
+          data_envio: string | null
           data_validade: string | null
           desconto: number | null
           descricao: string | null
-          doc_url: string | null
+          detalhe_rejeicao: string | null
           empresa_id: string | null
           id: string | null
+          motivo_rejeicao: string | null
           numero: string | null
           obra_id: string | null
           observacao: string | null
@@ -1838,13 +1946,16 @@ export type Database = {
           condicoes_pagamento?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_decisao?: string | null
           data_emissao?: string | null
+          data_envio?: string | null
           data_validade?: string | null
           desconto?: number | null
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rejeicao?: string | null
           empresa_id?: string | null
           id?: string | null
+          motivo_rejeicao?: string | null
           numero?: string | null
           obra_id?: string | null
           observacao?: string | null
@@ -1866,13 +1977,16 @@ export type Database = {
           condicoes_pagamento?: string | null
           created_at?: string | null
           created_by?: string | null
+          data_decisao?: string | null
           data_emissao?: string | null
+          data_envio?: string | null
           data_validade?: string | null
           desconto?: number | null
           descricao?: string | null
-          doc_url?: string | null
+          detalhe_rejeicao?: string | null
           empresa_id?: string | null
           id?: string | null
+          motivo_rejeicao?: string | null
           numero?: string | null
           obra_id?: string | null
           observacao?: string | null

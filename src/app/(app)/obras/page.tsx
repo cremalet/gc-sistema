@@ -47,15 +47,28 @@ export default async function ObrasPage({
   let query = supabase
     .from('obras_com_valores')
     .select(
-      'id, empresa_id, codigo_obra, nome, cliente, cidade, status, valor_final_calculado, data_inicio, data_prevista_fim, data_real_fim, created_at, updated_at, desconto_calculado, valor_total_calculado, pct_sinal_calculado, pct_fd_calculado, pct_entrega_material_calculado, pct_medicao_instalacao_calculado',
+      'id, empresa_id, codigo_obra, nome, cliente_id, cidade, status, valor_final_calculado, data_inicio, data_prevista_fim, data_real_fim, created_at, updated_at, desconto_calculado, valor_total_calculado, pct_sinal_calculado, pct_fd_calculado, pct_entrega_material_calculado, pct_medicao_instalacao_calculado, cliente:clientes(nome)',
       { count: 'exact' },
     )
     .order('created_at', { ascending: false })
 
   if (q) {
-    query = query.or(
-      `nome.ilike.%${q}%,codigo_obra.ilike.%${q}%,cliente.ilike.%${q}%`,
-    )
+    // Mesmo padrão de orcamentos/page.tsx: pre-query em clientes pra resolver IDs.
+    const { data: clientesMatch } = await supabase
+      .from('clientes')
+      .select('id')
+      .ilike('nome', `%${q}%`)
+
+    const clienteIds = (clientesMatch ?? []).map((c) => c.id)
+    const clienteFilter =
+      clienteIds.length > 0 ? `cliente_id.in.(${clienteIds.join(',')})` : null
+
+    const filters = [
+      `nome.ilike.%${q}%`,
+      `codigo_obra.ilike.%${q}%`,
+      clienteFilter,
+    ].filter(Boolean)
+    query = query.or(filters.join(','))
   }
 
   if (statusFilter && isValidStatus(statusFilter)) {

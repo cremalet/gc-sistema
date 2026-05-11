@@ -45,7 +45,7 @@ export default function ObrasTable({ obras }: ObrasTableProps) {
         {
           key: 'cliente',
           header: 'Cliente',
-          render: (o) => o.cliente ?? '—',
+          render: (o) => o.cliente?.nome ?? '—',
         },
         { key: 'cidade', header: 'Cidade', render: (o) => o.cidade ?? '—' },
         {

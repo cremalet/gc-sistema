@@ -34,12 +34,12 @@ export default function OrcamentosTable({ orcamentos }: OrcamentosTableProps) {
         {
           key: 'cliente',
           header: 'Cliente',
-          render: (o) => o.cliente_nome,
+          render: (o) => o.cliente?.nome ?? '—',
         },
         {
           key: 'cidade',
           header: 'Cidade',
-          render: (o) => o.cliente_cidade ?? '—',
+          render: (o) => o.cliente?.cidade ?? '—',
         },
         {
           key: 'status',

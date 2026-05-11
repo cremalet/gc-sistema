@@ -25,10 +25,14 @@ export default async function OrcamentoDetalhePage({ params }: PageProps) {
 
   const supabase = createClient()
 
-  // Orçamento + lista de obras em paralelo. A lista é necessária pra popular o
-  // select "Vincular a obra" do dialog de mudança de status.
+  // Orçamento (com cliente via JOIN) + lista de obras em paralelo. A lista é
+  // necessária pra popular o select "Vincular a obra" do dialog de mudança de status.
   const [orcamentoRes, obrasListRes] = await Promise.all([
-    supabase.from('orcamentos').select('*').eq('id', params.id).maybeSingle(),
+    supabase
+      .from('orcamentos')
+      .select('*, cliente:clientes(nome, contato, telefone, email, cidade)')
+      .eq('id', params.id)
+      .maybeSingle(),
     supabase
       .from('obras')
       .select('id, codigo_obra, nome')
@@ -37,8 +41,19 @@ export default async function OrcamentoDetalhePage({ params }: PageProps) {
 
   if (!orcamentoRes.data) notFound()
 
-  // Cast: status vem como `string` do gen, garantimos OrcamentoStatus via CHECK.
-  const orcamento = orcamentoRes.data as Orcamento
+  // Separa cliente aninhado pra ter narrowing limpo no Orcamento.
+  const { cliente, ...orcamentoRow } = orcamentoRes.data as Orcamento & {
+    cliente:
+      | {
+          nome: string
+          contato: string | null
+          telefone: string | null
+          email: string | null
+          cidade: string | null
+        }
+      | null
+  }
+  const orcamento = orcamentoRow as Orcamento
 
   const obraOptions = (obrasListRes.data ?? []).map((o) => ({
     value: o.id,
@@ -58,7 +73,7 @@ export default async function OrcamentoDetalhePage({ params }: PageProps) {
       <DetailHeader
         id={orcamento.id}
         numero={orcamento.numero}
-        clienteNome={orcamento.cliente_nome}
+        clienteNome={cliente?.nome ?? '—'}
         status={orcamento.status}
         obraId={orcamento.obra_id}
         perfil={profile.perfil}
@@ -70,7 +85,9 @@ export default async function OrcamentoDetalhePage({ params }: PageProps) {
           {
             value: 'detalhes',
             label: 'Detalhes',
-            content: <DetailsTab orcamento={orcamento} obra={obra} />,
+            content: (
+              <DetailsTab orcamento={orcamento} obra={obra} cliente={cliente} />
+            ),
           },
           {
             value: 'anexos',
@@ -97,9 +114,17 @@ export default async function OrcamentoDetalhePage({ params }: PageProps) {
 function DetailsTab({
   orcamento,
   obra,
+  cliente,
 }: {
   orcamento: Orcamento
   obra: { codigo_obra: string; nome: string } | null
+  cliente: {
+    nome: string
+    contato: string | null
+    telefone: string | null
+    email: string | null
+    cidade: string | null
+  } | null
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -115,13 +140,13 @@ function DetailsTab({
         <Block title="Cliente">
           <DetailField
             label="Nome"
-            value={orcamento.cliente_nome}
+            value={cliente?.nome ?? null}
             className="md:col-span-2"
           />
-          <DetailField label="Contato" value={orcamento.cliente_contato} />
-          <DetailField label="Telefone" value={orcamento.cliente_telefone} />
-          <DetailField label="Email" value={orcamento.cliente_email} />
-          <DetailField label="Cidade" value={orcamento.cliente_cidade} />
+          <DetailField label="Contato" value={cliente?.contato ?? null} />
+          <DetailField label="Telefone" value={cliente?.telefone ?? null} />
+          <DetailField label="Email" value={cliente?.email ?? null} />
+          <DetailField label="Cidade" value={cliente?.cidade ?? null} />
         </Block>
 
         <Block title="Escopo">
