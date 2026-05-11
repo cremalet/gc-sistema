@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ScrollText,
   Settings,
+  Users,
   Wallet,
   Wrench,
   type LucideIcon,
@@ -31,6 +32,12 @@ const TODOS: readonly Perfil[] = [
 
 export const MENU_ITEMS: readonly MenuItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard, perfis: TODOS },
+  {
+    label: 'Clientes',
+    href: '/clientes',
+    icon: Users,
+    perfis: ['admin', 'comercial', 'visualizador'],
+  },
   {
     label: 'Orçamentos',
     href: '/orcamentos',
