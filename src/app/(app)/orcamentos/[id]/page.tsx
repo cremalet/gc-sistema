@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server'
 import {
   MOTIVO_REJEICAO_LABELS,
   type Anexo,
-  type MotivoRejeicaoOrcamento,
   type Orcamento,
 } from '@/lib/types'
 
