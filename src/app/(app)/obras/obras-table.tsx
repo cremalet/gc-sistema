@@ -6,21 +6,15 @@ import StatusBadge from '@/components/StatusBadge'
 import { formatCurrency } from '@/lib/format'
 import type { ObraListItem } from '@/lib/types'
 
+/**
+ * Progresso = % de itens medidos sobre total contratado.
+ * Vem pré-calculado pela view `obras_com_valores` (coluna
+ * `progresso_itens_pct`). NULL quando obra não tem itens.
+ */
 function computeProgress(obra: ObraListItem): number | null {
   if (obra.status === 'concluida') return 100
-  if (obra.status !== 'ativa') return null
-  if (!obra.data_inicio || !obra.data_prevista_fim) return null
-
-  const inicio = new Date(obra.data_inicio).getTime()
-  const fim = new Date(obra.data_prevista_fim).getTime()
-  if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) {
-    return null
-  }
-
-  const now = Date.now()
-  if (now <= inicio) return 0
-  if (now >= fim) return 95 // Ainda ativa depois do prazo — não é 100%.
-  return Math.round(((now - inicio) / (fim - inicio)) * 100)
+  if (obra.progresso_itens_pct == null) return null
+  return Math.round(Number(obra.progresso_itens_pct))
 }
 
 type ObrasTableProps = {

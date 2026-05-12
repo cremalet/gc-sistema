@@ -48,7 +48,7 @@ export default async function ObrasPage({
   let query = supabase
     .from('obras_com_valores')
     .select(
-      'id, empresa_id, codigo_obra, nome, cliente_id, cidade, status, valor_final_calculado, data_inicio, data_prevista_fim, data_real_fim, created_at, updated_at, desconto_calculado, valor_total_calculado, pct_sinal_calculado, pct_fd_calculado, pct_entrega_material_calculado, pct_medicao_instalacao_calculado, cliente:clientes(nome)',
+      'id, empresa_id, codigo_obra, nome, cliente_id, cidade, status, valor_final_calculado, data_inicio, data_prevista_fim, data_real_fim, created_at, updated_at, desconto_calculado, valor_total_calculado, pct_sinal_calculado, pct_fd_calculado, pct_entrega_material_calculado, pct_medicao_instalacao_calculado, progresso_itens_pct, cliente:clientes(nome)',
       { count: 'exact' },
     )
     .order('created_at', { ascending: false })

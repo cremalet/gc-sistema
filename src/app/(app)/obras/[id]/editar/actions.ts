@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
 import { createClient } from '@/lib/supabase/server'
 
@@ -88,5 +87,5 @@ export async function deleteObra(id: string): Promise<DeleteObraResult> {
   }
 
   revalidatePath('/obras')
-  redirect('/obras')
+  return { ok: true }
 }
