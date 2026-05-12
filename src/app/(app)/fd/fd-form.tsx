@@ -262,7 +262,7 @@ export default function FdForm({
           label="Valor a descontar (R$)"
           htmlFor="valor_descontar"
           required
-          hint="O que aceitamos descontar do nosso pagamento"
+          hint="O que não concordamos"
           error={errors.valor_descontar?.message}
         >
           <Input
